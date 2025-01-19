@@ -1,0 +1,58 @@
+#include "include/stdlib.fc";
+#include "include/message.fc";
+#include "include/action.fc";
+
+;; ------------------------------------------------------------------------------------------------
+;; storage variables
+;; load_data populates storage variables using stored data
+(int {-deposit-}, slice {-owner-}) load_data() impure inline_ref {
+    slice ds = get_data().begin_parse();
+    var out = (ds~load_coins(), ds~load_msg_addr());
+    ds.end_parse();
+    return out;
+}
+
+;; ------------------------------------------------------------------------------------------------
+;; computation
+
+const int fee_action = 20000000; ;; TODO use gas insted token
+
+() recv_internal(int balance, cell in_msg, slice body) impure inline {
+    slice cs = in_msg.begin_parse();
+    int flags = cs~load_msg_flags();
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+    slice actor = cs~load_msg_addr();
+    (int deposit, slice owner) = load_data();
+    if (body.slice_bits() < MSG_OP_SIZE) {
+        if (balance >= (deposit + fee_action)) {
+            raw_reserve(deposit, RESERVE_REGULAR);
+            cell out_msg = int_message_info(NON_BOUNCEABLE, owner, 0)
+                .store_op(action::deposit)
+                .store_query_id(0)
+                .store_slice(actor)
+                .end_cell();
+            send_raw_message(out_msg, SEND_MODE_CARRY_ALL_BALANCE);
+        }
+        return ();
+    }
+    int op = body~load_op();
+    int query_id = body~load_query_id();
+    if ((op == action::claim) & equal_slices_bits(actor, owner)) {
+        slice recipient = body~load_msg_addr();
+        cell out_msg = int_message_info(NON_BOUNCEABLE, recipient, 0)
+            .store_op(action::send)
+            .store_query_id(query_id)
+            .store_slice(recipient)
+            .end_cell();
+        send_raw_message(out_msg, SEND_MODE_CARRY_ALL_BALANCE);
+    }
+    return ();
+}
+
+;; ------------------------------------------------------------------------------------------------
+;; get methods
+(int, slice) get_state() method_id {
+    return load_data();
+}

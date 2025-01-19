@@ -1,0 +1,162 @@
+#include "include/stdlib.fc";
+#include "include/size.fc";
+#include "include/message.fc";
+#include "include/action.fc";
+
+;; ------------------------------------------------------------------------------------------------
+;; storage variables
+
+global int seqno;
+global int status;
+global int started_at;
+global int deadline;
+global slice description;
+global cell cast;
+
+;; load_data populates storage variables using stored data
+() load_data() impure inline_ref {
+    slice ds = get_data().begin_parse();
+    ;; uint4,uint32,uint22,cell,map(uint2,address)
+    seqno = ds~load_uint(size::seqno);
+    status = ds~load_uint(size::status);
+    started_at = ds~load_uint(size::time);
+    deadline = ds~load_uint(size::deadline);
+    description = ds~load_ref().begin_parse();
+    cast = ds~load_dict();
+    ds.end_parse();
+    return ();
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data() impure inline_ref {
+    set_data(
+        begin_cell()
+            .store_uint(seqno, size::seqno)
+            .store_uint(status, size::status)
+            .store_uint(started_at, size::time)
+            .store_uint(deadline, size::deadline)
+            .store_ref( begin_cell().store_slice(description).end_cell())
+            .store_dict(cast)
+            .end_cell()
+    );
+    return ();
+}
+
+;; ------------------------------------------------------------------------------------------------
+;; computation
+
+slice get_actor(int actor_id) impure inline_ref {
+    var (value, _) = cast.udict_get?(size::actor_id, actor_id);
+    return value;
+}
+
+int auth(slice actor, int actor_id) impure inline_ref {
+    (slice vaule, int found) = cast.udict_get?(size::actor_id, actor_id);
+    return found ? equal_slices_bits(actor, vaule) : FALSE;
+}
+
+(slice, int,  slice) process_request(int op, slice actor, slice body) impure inline {
+    int action = action::send;
+    int match = (op << 4 | status);
+    slice reason = reason::nothing;
+    if (auth(actor, actor::seller)) {
+        if (match == match::bind_draft) {
+            slice vault = body~load_msg_addr();
+            cast~udict_set(size::actor_id, actor::vault, vault);
+            status = status::proposed;
+            save_data();
+            reason = reason::proposed;
+        } elseif (match == match::perform_deposited) { ;; soft deadline TODO add hard deadline claim
+            status = status::performed;
+            save_data();
+            reason = reason::performed;
+        } elseif (match == match::deliver_performed) {
+            status = status::delivered;
+            save_data();
+            reason = reason::delivered;
+        } elseif (match == match::dispute_delivered) { ;; FIXME dubl
+            status = status::disputed;
+            save_data();
+            reason = reason::disputed;
+        } elseif (match == match::claim_approved) {
+            status = status::claimed;
+            save_data();
+            reason = get_actor(actor::seller);
+            action = action::claim;
+            actor = get_actor(actor::vault);
+        }
+    } elseif (auth(actor, actor::buyer)) {
+        if (match == match::dispute_deposited) {
+            int time_left = (started_at + deadline) - now();
+            if (time_left > 0) {
+                reason = reason::disputed_wait;
+            } else {
+                status = status::disputed;
+                save_data();
+                reason = reason::disputed;
+            }
+        } elseif (match == match::approve_delivered) {
+            status = status::approved;
+            save_data();
+            reason = reason::approved;
+        } elseif (match == match::dispute_delivered) { ;; FIXME dubl
+            status = status::disputed;
+            save_data();
+            reason = reason::disputed;
+        } elseif (match == match::claim_rejected) {
+            status = status::refunded;
+            save_data();
+            reason = get_actor(actor::buyer);
+            action = action::claim;
+            actor = get_actor(actor::vault);
+        }
+    } elseif (auth(actor, actor::guard)) {
+        if (match == match::reject_disputed) {
+            status = status::rejected;
+            save_data();
+            reason = reason::reject;
+        } elseif (match == match::settle_disputed) {
+            status = status::performed;
+            save_data();
+            reason = reason::performed;
+        }
+    } elseif (auth(actor, actor::vault) & (match == match::deposit_proposed)) {
+        status = status::deposited;
+        started_at = now();
+        reason = reason::deposited;
+        actor = body~load_msg_addr();
+        ;; TODO add a feature to avoid identifying the buyer in advance
+        save_data();
+    }
+    return (actor, action, reason);
+}
+
+() recv_internal(cell in_msg, slice body) impure inline {
+    if (body.slice_bits() < MSG_OP_SIZE) {
+        return (); ;; just receive Toncoins
+    }
+
+    slice cs = in_msg.begin_parse();
+    int flags = cs~load_msg_flags();
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+    slice actor = cs~load_msg_addr();
+
+    int op = body~load_op();
+    int query_id = body~load_query_id();
+    if ((op == action::send) & (body.slice_bits() == MSG_OP_SIZE)) {
+        op = body~load_op();  ;; load opcode from text comment
+    }
+    load_data();
+    (slice dest, int action, slice reason) = process_request(op, actor, body);
+    message(dest,0, action, query_id, reason, SEND_MODE_CARRY_ALL_BALANCE);
+    return ();
+}
+
+;; ------------------------------------------------------------------------------------------------
+;; get methods
+(int, int, int, int, slice, cell) get_state() method_id {
+    load_data();
+    return (seqno, status, started_at, deadline, description, cast);
+}

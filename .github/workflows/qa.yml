@@ -1,0 +1,43 @@
+name: qa
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/**'
+      - 'contracts/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'wrappers/**'
+      - 'jest.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ever-guild/tvm-action@v1
+        with:
+          args: tlbc -v -t -q  contracts/schema.tlb
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: |
+          pnpm install
+          pnpm lint
+          pnpm build
+          pnpm tlb-gen
+          pnpm test

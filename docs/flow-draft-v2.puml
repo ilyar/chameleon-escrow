@@ -1,0 +1,94 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+scale 960 width
+skinparam shadowing false
+
+skinparam defaultFontName "IBM Plex Sans, Noto Sans, Verdana"
+skinparam defaultFontSize 15
+skinparam BackgroundColor #F7F9FB
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam Padding 2
+actor Seller
+actor Guard
+
+box "The Open Network" #0098EA
+participant WS as "Seller"
+participant WG as "Guard"
+collections Escrow
+collections Vault
+participant WB as "Buyer"
+end box
+
+actor Buyer
+
+== Deploy Escrow ==
+autonumber 1.1
+Seller --> WS: param for Escrow
+activate WS
+WS -> Escrow: deploy
+WS -> Vault: deploy
+WS -> Escrow: bind with Vault
+deactivate WS
+
+== Filling Escrow ==
+autonumber 2.1
+Buyer --> WB: param for money
+activate WB
+WB -> Vault: send money
+Vault -> Escrow: set status deposited
+Escrow -> WB: change
+deactivate WB
+
+== Resolve Escrow ==
+alt #1AC9FF CLAIM
+    autonumber 3.1
+    Seller --> WS: puts PERFORM
+    activate WS
+    WS --> Escrow: set PERFORMED status
+    Escrow --> WS: change
+    deactivate WS
+
+    Seller --> WS: puts DELIVER
+    activate WS
+    WS --> Escrow: set DELIVERED status
+    Escrow --> WS: change
+    deactivate WS
+
+    Buyer --> WB: puts APPROVE
+    activate WB
+    WB --> Escrow: set APPROVED status
+    Escrow --> WB: change
+    deactivate WB
+
+    Seller --> WS: puts CLAIM
+    activate WS
+    WS -> Escrow: set CLAIMED status
+    Escrow -> Vault: CLAIM
+    Vault -> WS: send money
+    deactivate WS
+
+else #2D83EC REFUND
+    autonumber 3.1
+    Buyer --> WB: puts DISPUTE
+    activate WB
+    WB --> Escrow: set DISPUTED status
+    Escrow --> WB: change
+    deactivate WB
+
+    Guard --> WG: puts REJECT
+    activate WG
+    WG --> Escrow: set REJECTED status
+    Escrow --> WG: change
+    deactivate WG
+
+    Buyer --> WB: puts CLAIM
+    activate WB
+    WB -> Escrow: set REFUNDED status
+    Escrow -> Vault: CLAIM
+    Vault -> WB: send money
+    deactivate WB
+end
+
+@enduml
