@@ -1,0 +1,20 @@
+#include "stdlib.fc";
+
+;; https://docs.ton.org/v3/documentation/smart-contracts/message-management/sending-messages#message-layout
+builder int_message_info(int flags, slice dest, int grams) inline {
+    return begin_cell()
+        .store_msg_flags_and_address_none(flags)
+        .store_slice(dest)
+        .store_coins(grams)
+        .store_prefix_only_body();
+}
+
+builder int_message(int flags, slice dest, int grams, int op, int query_id) inline {
+    return int_message_info(flags, dest, grams).store_op(op).store_query_id(query_id);
+}
+
+() message(slice dest, int grams, int op, int query_id, slice reason, int mode) impure inline {
+    builder message = int_message(NON_BOUNCEABLE, dest, grams, op, query_id);
+    send_raw_message(message.store_slice(reason).end_cell(), mode);
+    return ();
+}

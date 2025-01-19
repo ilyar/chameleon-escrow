@@ -1,0 +1,55 @@
+@startuml
+'https://plantuml.com/state-diagram
+
+scale 960 width
+skinparam defaultFontName "IBM Plex Sans, Noto Sans, Verdana"
+skinparam defaultFontSize 25
+skinparam BackgroundColor #F7F9FB
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam Padding 2
+
+skinparam shadowing false
+hide empty description
+skinparam padding 15
+
+[*] -> ACCOUNT
+state ACCOUNT {
+    NONEXISTENT -> UNINIT : send value
+    note top of UNINIT : initial state of the account
+    UNINIT -> ACTIVE : initialize
+    UNINIT -[#dd00aa]-> FROZEN : due payment
+    note top of ACTIVE : normal message processing
+    ACTIVE -[#blue]-> FROZEN : due payment
+    note left of FROZEN : unfreeze message only
+    FROZEN -[#blue]-> ACTIVE : unfreeze
+    FROZEN -[#dd00aa]-> UNINIT : unfreeze
+    FROZEN -> NONEXISTENT : delete
+
+    ACTIVE -> ESCROW : created the ESCROW
+    state ESCROW {
+        state timeout <<fork>>
+        state PROPOSED #EBF9E7
+        state DEPOSITED #EBF9E7
+        state DELIVERED #EBF9E7
+        state APPROVED #EBF9E7
+        state CLAIMED #EBF9E7
+        state DISPUTED #FFFCEA
+        state REJECTED #FFF0F0
+        state REFUNDED #FFF0F0
+        PROPOSED --> DEPOSITED : **Buyer**
+        DEPOSITED --> DISPUTED : **Buyer**
+        DISPUTED --> REJECTED : **Guarantor**
+        DISPUTED --> DEPOSITED : **Guarantor**
+        DEPOSITED --> REJECTED : **Guarantor**
+        DEPOSITED --> DELIVERED : **Seller**
+        DELIVERED --> APPROVED : **Guarantor**
+        DELIVERED --> REJECTED : **Guarantor**
+        REJECTED --> REFUNDED : **Buyer**
+        APPROVED --> timeout : timeout
+        timeout --> DISPUTED : **Buyer**
+        timeout --> CLAIMED : **Seller**
+    }
+}
+ACCOUNT -> [*]
+@enduml

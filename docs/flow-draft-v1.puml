@@ -1,0 +1,81 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+scale 960 width
+skinparam shadowing false
+
+'Participants:
+'Seller: Wants to exchange TON or Jetton for something (eg. sell an item Telegram channel, car, etc).
+'Buyer: Wants to get what the seller is offering.
+'Guarantor: Makes sure the deal is safe and fair. Often, this is the platform where the sale happens, represented by a server.
+'Escrow Contract: A smart contract that safely keeps the money until the deal is done.
+'Suggested flow:
+'Seller deploys the Escrow Contract with the needed Jetton or TON amount.
+'Buyer puts the money into the Escrow Contract.
+'Guarantor checks everything (onchain & offchain).
+'If all is good, Guarantor tells the Escrow Contract to give the money to the Seller.
+'If there's a problem, Guarantor tells the Escrow Contract to refund the Buyer.
+skinparam defaultFontName "IBM Plex Sans, Noto Sans, Verdana"
+skinparam defaultFontSize 15
+skinparam BackgroundColor #F7F9FB
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam Padding 2
+actor Seller
+actor Guarantor
+
+box "The Open Network" #0098EA
+participant WS as "Seller"
+participant WG as "Guarantor"
+participant Deployer
+collections Escrow
+participant WB as "Buyer"
+end box
+
+actor Buyer
+
+== Deploy Escrow ==
+autonumber 1.1
+Seller --> WS: param for Escrow
+activate WS
+WS -> Deployer: deploy
+deactivate WS
+activate Deployer
+Deployer -> Escrow: new contract
+deactivate Deployer
+
+== Filling Escrow ==
+autonumber 2.1
+Buyer --> WB: param for money
+activate WB
+WB -> Escrow: send money
+deactivate WB
+
+== Resolve Escrow ==
+alt #1AC9FF OK
+    autonumber 3.1
+    Guarantor --> WG: puts OK status
+    activate WG
+    WG -> Escrow: setting OK status
+    deactivate WG
+    Seller --> WS: claim money
+    activate WS
+    WS -> Escrow: claim
+    Escrow -> WS: send money
+    deactivate WS
+else #2D83EC PROBLEM
+    autonumber 3.1
+    Guarantor --> WG: puts PROBLEM status
+    activate WG
+    WG -> Escrow: setting PROBLEM status
+    deactivate WG
+
+    Buyer --> WB: refund money
+    activate WB
+    WB -> Escrow: refund
+    Escrow -> WB: send money
+    deactivate WB
+end
+
+Escrow -> Escrow: destroy
+@enduml

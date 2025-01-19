@@ -1,0 +1,77 @@
+// schema from block.tlb
+bit$_ (## 1) = Bit;
+bool_false$0 = Bool;
+bool_true$1 = Bool;
+unary_zero$0 = Unary ~0;
+nothing$0 {X:Type} = Maybe X;
+just$1 {X:Type} value:X = Maybe X;
+left$0 {X:Type} {Y:Type} value:X = Either X Y;
+right$1 {X:Type} {Y:Type} value:Y = Either X Y;
+unary_succ$1 {n:#} x:(Unary ~n) = Unary ~(n + 1);
+hml_short$0 {m:#} {n:#} len:(Unary ~n) {n <= m} s:(n * Bit) = HmLabel ~n m;
+hml_long$10 {m:#} n:(#<= m) s:(n * Bit) = HmLabel ~n m;
+hml_same$11 {m:#} v:Bit n:(#<= m) = HmLabel ~n m;
+hmn_leaf#_ {X:Type} value:X = HashmapNode 0 X;
+hmn_fork#_ {n:#} {X:Type} left:^(Hashmap n X) right:^(Hashmap n X) = HashmapNode (n + 1) X;
+hm_edge#_ {n:#} {X:Type} {l:#} {m:#} label:(HmLabel ~l n) {n = (~m) + l} node:(HashmapNode m X) = Hashmap n X;
+hme_empty$0 {n:#} {X:Type} = HashmapE n X;
+hme_root$1 {n:#} {X:Type} root:^(Hashmap n X) = HashmapE n X;
+anycast_info$_ depth:(#<= 30) { depth >= 1 } rewrite_pfx:(bits depth) = Anycast;
+addr_std$10 anycast:(Maybe Anycast) workchain_id:int8 address:bits256  = MsgAddressInt;
+addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9) workchain_id:int32 address:(bits addr_len) = MsgAddressInt;
+var_uint$_ {n:#} len:(#< n) value:(uint (len * 8)) = VarUInteger n;
+nanograms$_ amount:(VarUInteger 16) = Grams;
+extra_currencies$_ dict:(HashmapE 32 (VarUInteger 32)) = ExtraCurrencyCollection;
+currencies$_ grams:Grams other:ExtraCurrencyCollection = CurrencyCollection;
+int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  src:MsgAddressInt dest:MsgAddressInt
+  value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
+  created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+tick_tock$_ tick:Bool tock:Bool = TickTock;
+_ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+  code:(Maybe ^Cell) data:(Maybe ^Cell)
+  library:(Maybe ^Cell) = StateInit;
+message$_ {X:Type} info:CommonMsgInfo
+  init:(Maybe (Either StateInit ^StateInit))
+  body:(Either X ^X) = Message X;
+
+// schema of project
+action_bind#42494E44 query_id:(## 64) vault:MsgAddressInt = InternalMsgBodyBindAction;
+action_deposit#44455053 query_id:(## 64) buyer:MsgAddressInt = InternalMsgBodyDepositAction;
+action_perform#50455246 query_id:(## 64) = InternalMsgBodyPerformAction;
+action_deliver#444C5652 query_id:(## 64) = InternalMsgBodyDeliverAction;
+action_approve#41505256 query_id:(## 64) = InternalMsgBodyApproveAction;
+action_claim#434C494D query_id:(## 64) recipient:MsgAddressInt = InternalMsgBodyClaimAction;
+action_dispute#44535054 query_id:(## 64) = InternalMsgBodyDisputeAction;
+action_settle#5354544C query_id:(## 64) = InternalMsgBodySettleAction;
+action_reject#524A4354 query_id:(## 64) = InternalMsgBodyRejectAction;
+
+seller_actor$00 = SellerActor;
+buyer_actor$01 = BuyerActor;
+guard_actor$10 = GuardActor;
+vault_actor$11 = VaultActor;
+actor_id$_ (## 2) = ActorId;
+escrow_state$_
+ sqno:uint32
+ status:uint4
+ deadline:uint32
+ timeout:uint32
+ cast:(HashmapE 2 MsgAddressInt)
+ = EscrowState;
+
+_ (Message InternalMsgBodyBindAction) = MessageEscrowBindAction;
+_ (Message InternalMsgBodyDepositAction) = MessageEscrowDepositAction;
+_ (Message InternalMsgBodyPerformAction) = MessageEscrowPerformAction;
+_ (Message InternalMsgBodyDeliverAction) = MessageEscrowDeliverAction;
+_ (Message InternalMsgBodyApproveAction) = MessageEscrowApproveAction;
+_ (Message InternalMsgBodyClaimAction) = MessageEscrowClaimAction;
+_ (Message InternalMsgBodyDisputeAction) = MessageEscrowDisputeAction;
+_ (Message InternalMsgBodySettleAction) = MessageEscrowSettleAction;
+_ (Message InternalMsgBodyRejectAction) = MessageEscrowRejectAction;
+
+vault_state$_
+ deposit:Grams
+ owner:MsgAddressInt
+ = VaultState;
+
+_ (Message InternalMsgBodyClaimAction) = MessageVaultClaimAction;
