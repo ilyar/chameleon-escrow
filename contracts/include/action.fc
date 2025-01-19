@@ -1,0 +1,50 @@
+const int actor::seller = 0;
+const int actor::buyer  = 1;
+const int actor::guard  = 2;
+const int actor::vault  = 3;
+
+const action::send    = 0x0;
+const action::bind    = "BIND"u;
+const action::deposit = "DEPS"u;
+const action::perform = "PERF"u;
+const action::deliver = "DLVR"u;
+const action::approve = "APRV"u;
+const action::claim   = "CLIM"u;
+const action::dispute = "DSPT"u;
+const action::settle  = "STTL"u;
+const action::reject  = "RJCT"u;
+
+const int status::draft     = 0;
+const int status::proposed  = 1;
+const int status::deposited = 2;
+const int status::performed = 3;
+const int status::delivered = 4;
+const int status::approved  = 5;
+const int status::claimed   = 6;
+const int status::disputed  = 7;
+const int status::rejected  = 8;
+const int status::refunded  = 9;
+const int status::completed = 10;
+
+const reason::nothing       = "nothing";
+const reason::proposed      = "vault";
+const reason::performed     = "performed";
+const reason::delivered     = "delivered";
+const reason::disputed      = "disputed";
+const reason::disputed_wait = "deadline";
+const reason::approved      = "approved";
+const reason::reject        = "reject";
+const reason::performed     = "performed";
+const reason::deposited     = "deposited";
+
+const match::bind_draft        = (action::bind << 4 | status::draft);
+const match::deposit_proposed  = (action::deposit << 4 | status::proposed);
+const match::perform_deposited = (action::perform << 4 | status::deposited);
+const match::dispute_deposited = (action::dispute << 4 | status::deposited);
+const match::deliver_performed = (action::deliver << 4 | status::performed);
+const match::approve_delivered = (action::approve << 4 | status::delivered);
+const match::dispute_delivered = (action::dispute << 4 | status::delivered);
+const match::claim_approved    = (action::claim << 4 | status::approved);
+const match::reject_disputed   = (action::reject << 4 | status::disputed);
+const match::settle_disputed   = (action::settle << 4 | status::disputed);
+const match::claim_rejected    = (action::claim << 4 | status::rejected);

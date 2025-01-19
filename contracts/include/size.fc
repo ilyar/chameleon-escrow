@@ -1,0 +1,5 @@
+const int size::seqno = 32;
+const int size::actor_id = 2;
+const int size::status = 4;
+const int size::time = 32;
+const int size::deadline = 22;

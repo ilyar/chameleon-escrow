@@ -1,0 +1,37 @@
+@startuml
+'https://plantuml.com/state-diagram
+
+scale 640 width
+skinparam shadowing false
+hide empty description
+
+[*] -> DEPLOY
+DEPLOY --> Escrow
+state Escrow {
+  PROPOSED --> DEPOSITED: **deposit**
+  DEPOSITED --> DELIVERED: **delivery**
+  DELIVERED ---> APPROVED: **good**
+  DELIVERED ---> REJECTED: **problem**
+  REJECTED --> DELIVERED: **fix**
+  REJECTED --> [*]: **refund**
+  APPROVED --> [*]: **claim**
+}
+Escrow --> [*]
+
+
+state Offer {
+  FINISHED ---> PROPOSED
+
+  PROPOSED ---> REJECTED
+  PROPOSED ---> ACCEPTED
+  PROPOSED ---> APPROVED
+
+  ACCEPTED ---> APPROVED
+  ACCEPTED ---> REJECTED
+
+  APPROVED ---> REJECTED
+  REJECTED ---> FINISHED
+  APPROVED ---> FINISHED
+}
+
+@enduml

@@ -1,0 +1,13 @@
+node_modules
+temp
+build
+dist
+.DS_Store
+.vscode/*
+.history/
+*.vsix
+.idea
+Session.vim
+.env
+schema.ts
+block.tlb
