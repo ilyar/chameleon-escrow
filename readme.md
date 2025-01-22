@@ -22,12 +22,10 @@ TBD
 
 TBD
 
-## Life circle contract
+## Life circle contract/account
 
 ```mermaid
 stateDiagram
-    direction TB
-
     classDef success fill:#EBF9E7
     classDef info fill:#F0FBFF
     classDef warning fill:#FFFCEA
@@ -40,12 +38,12 @@ stateDiagram
 
     [*] --> NONEXISTENT
     NONEXISTENT --> UNINIT : send value
-    note left of UNINIT : initial state of the account
-    UNINIT --> ACTIVE : initialize
-    ACTIVE --> FROZEN : due payment
-    note left of FROZEN : unfreeze message only
-    FROZEN --> ACTIVE : unfreeze
-    FROZEN --> UNINIT : unfreeze
+    note left of UNINIT    : initial state of the account
+    UNINIT --> ACTIVE      : initialize
+    ACTIVE --> FROZEN      : due payment
+    note left of FROZEN    : unfreeze message only
+    FROZEN --> ACTIVE      : unfreeze
+    FROZEN --> UNINIT      : unfreeze
     FROZEN --> NONEXISTENT : delete
 ```
 
@@ -73,42 +71,35 @@ stateDiagram
     state "⏳" as deadline
 
     [*] --> DRAFT
-    DRAFT --> PROPOSED : **Buyer**
-    PROPOSED --> DEPOSITED : **Vault**
+    DRAFT --> PROPOSED      : bind with Vault **Buyer**
+    PROPOSED --> DEPOSITED  : deposit <= input from **Vault**
 
-    DEPOSITED --> DISPUTED: **Buyer**
-    DEPOSITED --> PERFORMED : **Seller**
+    DEPOSITED --> DISPUTED  : dispute **Buyer**
+    DEPOSITED --> PERFORMED : perform **Seller**
 
-    PERFORMED --> deadline: _deadline_
-    deadline --> DISPUTED : **Buyer**
-    PERFORMED --> DELIVERED : **Seller**
+    PERFORMED --> deadline  : deadline
+    deadline --> DISPUTED   : dispute **Buyer**
+    PERFORMED --> DELIVERED : dispute **Seller**
 
-    DELIVERED --> DISPUTED : **Buyer**
-    DELIVERED --> DISPUTED : **Seller**
-    DELIVERED --> APPROVED : **Buyer**
+    DELIVERED --> DISPUTED  : dispute **Buyer**
+    DELIVERED --> DISPUTED  : dispute **Seller**
+    DELIVERED --> APPROVED  : approve **Buyer**
 
-    DISPUTED --> REJECTED : **Guarantor**
-    DISPUTED --> PERFORMED : **Guarantor**
+    DISPUTED --> REJECTED   : reject **Guard**
+    DISPUTED --> PERFORMED  : perform **Guard**
 
-    REJECTED --> REFUNDED : **Buyer**
-    APPROVED --> CLAIMED : **Seller**
+    REJECTED --> REFUNDED   : claim **Buyer**
+    APPROVED --> CLAIMED    : claim **Seller**
 
-    REFUNDED --> [*]
-    CLAIMED --> [*]
+    REFUNDED --> [*]        : claim => output to **Vault**
+    CLAIMED --> [*]         : claim => output to **Vault**
 ```
 
 ## Vault contract
 
 ```mermaid
 stateDiagram
-    classDef success fill:#EBF9E7
-    classDef info fill:#F0FBFF
-    classDef warning fill:#FFFCEA
-    classDef danger fill:#FFF0F0
-
-    class CLAIMED success
-
-    [*] --> DEPOSITED : **Any**
-    DEPOSITED --> CLAIMED : **Escrow**
-    CLAIMED --> [*]
+    [*] --> FILLED   : deposit => output to **Escrow**
+    FILLED --> EMPTY : claim <= input from **Escrow**
+    EMPTY --> [*]
 ```

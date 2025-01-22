@@ -48,9 +48,6 @@ global cell cast;
 
 ;; ------------------------------------------------------------------------------------------------
 ;; computation
-const action_forward_bits = 747;
-const action_forward_cells = 1;
-
 int action_fee(int workchain) impure inline_ref {
     int compute_gas = escrow_compute_gas;
     if ((status == status::approved) | (status == status::rejected)) {

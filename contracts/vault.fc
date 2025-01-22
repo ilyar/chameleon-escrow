@@ -18,9 +18,6 @@ const storage_cells = 1;
 
 ;; ------------------------------------------------------------------------------------------------
 ;; computation
-const action_forward_bits = 747;
-const action_forward_cells = 1;
-
 int action_fee(int workchain) impure inline_ref {
     int compute_gas = vault_compute_gas + escrow_compute_gas;
     return fee(workchain, compute_gas, storage_bits, storage_cells, action_forward_bits, action_forward_cells);

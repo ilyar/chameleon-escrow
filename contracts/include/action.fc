@@ -1,6 +1,9 @@
 const escrow_compute_gas = 65000;
 const vault_compute_gas  = 20000;
 
+const action_forward_bits  = 747;
+const action_forward_cells = 1;
+
 const int actor::seller = 0;
 const int actor::buyer  = 1;
 const int actor::guard  = 2;
