@@ -70,7 +70,7 @@ stateDiagram
 
     state "⏳" as deadline
 
-    [*] --> DRAFT
+    [*] --> DRAFT           : deploy **Any**
     DRAFT --> PROPOSED      : bind with Vault **Buyer**
     PROPOSED --> DEPOSITED  : deposit <= input from **Vault**
 
@@ -79,7 +79,7 @@ stateDiagram
 
     PERFORMED --> deadline  : deadline
     deadline --> DISPUTED   : dispute **Buyer**
-    PERFORMED --> DELIVERED : dispute **Seller**
+    PERFORMED --> DELIVERED : deliver **Seller**
 
     DELIVERED --> DISPUTED  : dispute **Buyer**
     DELIVERED --> DISPUTED  : dispute **Seller**
