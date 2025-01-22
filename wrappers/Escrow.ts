@@ -11,7 +11,7 @@ import {
   toNano,
 } from '@ton/core'
 
-export const ACTION_VALUE = toNano(0.02)
+export const DEPLOY_VALUE = toNano(0.01)
 
 export enum Status {
   draft = 0,
@@ -88,7 +88,7 @@ export class Escrow implements Contract {
     return new Escrow(contractAddress(workchain, init), init)
   }
 
-  async sendDeploy(provider: ContractProvider, via: Sender, value = toNano('0.01')) {
+  async sendDeploy(provider: ContractProvider, via: Sender, value = DEPLOY_VALUE) {
     await provider.internal(via, {
       value,
       sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -110,7 +110,7 @@ export class Escrow implements Contract {
     },
   ) {
     await provider.internal(via, {
-      value: prop.value ?? ACTION_VALUE,
+      value: prop.value ?? (await this.getActionFee(provider)),
       sendMode: SendMode.PAY_GAS_SEPARATELY,
       body: beginCell()
         .storeUint(Action.bind, 32)
@@ -129,8 +129,9 @@ export class Escrow implements Contract {
       queryID?: number
     },
   ) {
+    const workchain = this.address?.workChain ?? 0
     await provider.internal(via, {
-      value: prop.value ?? ACTION_VALUE,
+      value: prop.value ?? (await this.getActionFee(provider, workchain)),
       sendMode: SendMode.PAY_GAS_SEPARATELY,
       body: beginCell()
         .storeUint(prop.opcode, 32)
@@ -167,5 +168,12 @@ export class Escrow implements Contract {
       description,
       ...cast,
     }
+  }
+
+  async getActionFee(provider: ContractProvider, workchain?: number) {
+    const result = await provider.get('get_action_fee', [
+      { type: 'int', value: BigInt(workchain ?? this.address?.workChain ?? 0) },
+    ])
+    return result.stack.readBigNumber()
   }
 }

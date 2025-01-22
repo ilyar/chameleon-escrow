@@ -2,7 +2,7 @@ import { compile } from '@ton/blueprint'
 import '@ton/test-utils'
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox'
 import { Cell, fromNano, toNano } from '@ton/core'
-import { Action, ACTION_VALUE, Escrow, Status } from '../wrappers/Escrow'
+import { Action, Escrow, Status } from '../wrappers/Escrow'
 import { Vault } from '../wrappers/Vault'
 
 const DEPOSIT = toNano(10)
@@ -102,7 +102,7 @@ describe('Escrow claim', () => {
     await printBalance('bind vault')
   })
 
-  it('escrow should deploy and bind vault', async () => {
+  it('Escrow should deploy and bind vault', async () => {
     const escrowState = await escrow.getState()
     expect(JSON.stringify(escrowState)).toEqual(
       JSON.stringify({
@@ -124,9 +124,10 @@ describe('Escrow claim', () => {
 
   it('Case claim success', async () => {
     expect((await escrow.getState()).status).toEqual(Status[Status.proposed])
+    const actionFee = await vault.getActionFee(0)
     const depositResult = await buyer.send({
       to: vault.address,
-      value: DEPOSIT + ACTION_VALUE,
+      value: DEPOSIT + actionFee,
     })
     expect(depositResult.transactions).toHaveTransaction({
       from: buyer.address,
@@ -198,6 +199,6 @@ describe('Escrow claim', () => {
     expect(Math.round(Number(fromNano(await buyer.getBalance())))).toBeLessThanOrEqual(
       parseInt(fromNano(buyerBalance - DEPOSIT)),
     )
-    expect(await diffBalance()).toEqual('0.055')
+    expect(await diffBalance()).toEqual('0.064')
   })
 })

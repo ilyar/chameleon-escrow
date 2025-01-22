@@ -9,12 +9,16 @@ builder int_message_info(int flags, slice dest, int grams) inline {
         .store_prefix_only_body();
 }
 
-builder int_message(int flags, slice dest, int grams, int op, int query_id) inline {
-    return int_message_info(flags, dest, grams).store_op(op).store_query_id(query_id);
+builder int_message(int flags, slice dest, int grams, int action, int query_id) inline {
+    return int_message_info(flags, dest, grams).store_op(action).store_query_id(query_id);
 }
 
-() message(slice dest, int grams, int op, int query_id, slice reason, int mode) impure inline {
-    builder message = int_message(NON_BOUNCEABLE, dest, grams, op, query_id);
-    send_raw_message(message.store_slice(reason).end_cell(), mode);
-    return ();
+() message(slice dest, int grams, int action, int query_id, slice reason, int mode) impure inline {
+    builder message = int_message(NON_BOUNCEABLE, dest, grams, action, query_id);
+    return send_raw_message(message.store_slice(reason).end_cell(), mode);
+}
+
+() change(slice dest, int action, int query_id, slice body) impure inline {
+    builder message = int_message(NON_BOUNCEABLE, dest, 0, action, query_id);
+    return send_raw_message(message.store_slice(body).end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
 }

@@ -33,7 +33,7 @@ describe('Escrow struct', () => {
     )
     const out = contractStat(vault)
     console.log(out)
-    expect([out.data.bits, out.code.bits]).toEqual([440, 1696])
+    expect([out.data.bits, out.code.bits]).toEqual([440, 3136])
   })
 
   it('escrow', async () => {
@@ -50,6 +50,6 @@ describe('Escrow struct', () => {
     )
     const out = contractStat(escrow)
     console.log(out)
-    expect([out.data.bits, out.code.bits]).toEqual([1736, 5976])
+    expect([out.data.bits, out.code.bits]).toEqual([1736, 7520])
   })
 })

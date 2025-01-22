@@ -4,6 +4,10 @@
 
 ;; ------------------------------------------------------------------------------------------------
 ;; storage variables
+
+const storage_bits = 303;
+const storage_cells = 1;
+
 ;; load_data populates storage variables using stored data
 (int {-deposit-}, slice {-owner-}) load_data() impure inline_ref {
     slice ds = get_data().begin_parse();
@@ -14,8 +18,13 @@
 
 ;; ------------------------------------------------------------------------------------------------
 ;; computation
+const action_forward_bits = 747;
+const action_forward_cells = 1;
 
-const int fee_action = 20000000; ;; TODO use gas insted token
+int action_fee(int workchain) impure inline_ref {
+    int compute_gas = vault_compute_gas + escrow_compute_gas;
+    return fee(workchain, compute_gas, storage_bits, storage_cells, action_forward_bits, action_forward_cells);
+}
 
 () recv_internal(int balance, cell in_msg, slice body) impure inline {
     slice cs = in_msg.begin_parse();
@@ -26,33 +35,28 @@ const int fee_action = 20000000; ;; TODO use gas insted token
     slice actor = cs~load_msg_addr();
     (int deposit, slice owner) = load_data();
     if (body.slice_bits() < MSG_OP_SIZE) {
-        if (balance >= (deposit + fee_action)) {
+        (int workchain, _) = parse_std_addr(my_address());
+        if (balance >= (deposit + action_fee(workchain))) {
             raw_reserve(deposit, RESERVE_REGULAR);
-            cell out_msg = int_message_info(NON_BOUNCEABLE, owner, 0)
-                .store_op(action::deposit)
-                .store_query_id(0)
-                .store_slice(actor)
-                .end_cell();
-            send_raw_message(out_msg, SEND_MODE_CARRY_ALL_BALANCE);
+            return change(owner, action::deposit, 0, actor);
         }
-        return ();
+        return change(actor, action::send, 0, reason::nothing);
     }
     int op = body~load_op();
     int query_id = body~load_query_id();
     if ((op == action::claim) & equal_slices_bits(actor, owner)) {
         slice recipient = body~load_msg_addr();
-        cell out_msg = int_message_info(NON_BOUNCEABLE, recipient, 0)
-            .store_op(action::send)
-            .store_query_id(query_id)
-            .store_slice(recipient)
-            .end_cell();
-        send_raw_message(out_msg, SEND_MODE_CARRY_ALL_BALANCE);
+        return change(recipient, action::send, query_id, recipient);
     }
-    return ();
+    return change(actor, action::send, query_id, reason::nothing);
 }
 
 ;; ------------------------------------------------------------------------------------------------
 ;; get methods
 (int, slice) get_state() method_id {
     return load_data();
+}
+
+(int) get_action_fee(int workchain) method_id {
+    return action_fee(workchain);
 }

@@ -6,6 +6,10 @@
 ;; ------------------------------------------------------------------------------------------------
 ;; storage variables
 
+;; if description 66 chars like ipfs uri
+const storage_bits = 1432;
+const storage_cells = 7;
+
 global int seqno;
 global int status;
 global int started_at;
@@ -44,6 +48,16 @@ global cell cast;
 
 ;; ------------------------------------------------------------------------------------------------
 ;; computation
+const action_forward_bits = 747;
+const action_forward_cells = 1;
+
+int action_fee(int workchain) impure inline_ref {
+    int compute_gas = escrow_compute_gas;
+    if ((status == status::approved) | (status == status::rejected)) {
+        compute_gas += vault_compute_gas;
+    }
+    return fee(workchain, compute_gas, storage_bits, storage_cells, action_forward_bits, action_forward_cells);
+}
 
 slice get_actor(int actor_id) impure inline_ref {
     var (value, _) = cast.udict_get?(size::actor_id, actor_id);
@@ -131,27 +145,28 @@ int auth(slice actor, int actor_id) impure inline_ref {
     return (actor, action, reason);
 }
 
-() recv_internal(cell in_msg, slice body) impure inline {
-    if (body.slice_bits() < MSG_OP_SIZE) {
-        return (); ;; just receive Toncoins
-    }
-
+() recv_internal(int balance, cell in_msg, slice body) impure inline {
     slice cs = in_msg.begin_parse();
     int flags = cs~load_msg_flags();
     if (flags & 1) { ;; ignore all bounced messages
         return ();
     }
     slice actor = cs~load_msg_addr();
-
+    if (body.slice_bits() < MSG_OP_SIZE) {
+        return change(actor, action::send, 0, reason::nothing);
+    }
     int op = body~load_op();
     int query_id = body~load_query_id();
     if ((op == action::send) & (body.slice_bits() == MSG_OP_SIZE)) {
         op = body~load_op();  ;; load opcode from text comment
     }
     load_data();
-    (slice dest, int action, slice reason) = process_request(op, actor, body);
-    message(dest,0, action, query_id, reason, SEND_MODE_CARRY_ALL_BALANCE);
-    return ();
+    (int workchain, _) = parse_std_addr(my_address());
+    if (balance >= action_fee(workchain)) {
+        (slice dest, int action, slice reason) = process_request(op, actor, body);
+        return change(dest, action, query_id, reason);
+    }
+    return change(actor, action::send, 0, reason::nothing);
 }
 
 ;; ------------------------------------------------------------------------------------------------
@@ -159,4 +174,9 @@ int auth(slice actor, int actor_id) impure inline_ref {
 (int, int, int, int, slice, cell) get_state() method_id {
     load_data();
     return (seqno, status, started_at, deadline, description, cast);
+}
+
+(int) get_action_fee(int workchain) method_id {
+    load_data();
+    return action_fee(workchain);
 }

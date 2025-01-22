@@ -2,8 +2,9 @@ import { compile } from '@ton/blueprint'
 import '@ton/test-utils'
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox'
 import { Cell, fromNano, toNano } from '@ton/core'
-import { Action, ACTION_VALUE, Escrow, Status } from '../wrappers/Escrow'
+import { Action, Escrow, Status } from '../wrappers/Escrow'
 import { Vault } from '../wrappers/Vault'
+import { spend } from './util'
 
 const DEPOSIT = toNano(10)
 
@@ -12,6 +13,7 @@ describe('Escrow Reward', () => {
   let vaultCode: Cell
   let blockchain: Blockchain
   let seller: SandboxContract<TreasuryContract>
+  let sellerBalance = 0n
   let buyer: SandboxContract<TreasuryContract>
   let buyerBalance = 0n
   let guard: SandboxContract<TreasuryContract>
@@ -37,6 +39,7 @@ describe('Escrow Reward', () => {
       Number(fromNano(await vault.getBalance()))
     )
   }
+
   async function diffBalance() {
     return Number(1000000 * 3 - (await sumBalance())).toFixed(3)
   }
@@ -45,11 +48,10 @@ describe('Escrow Reward', () => {
     escrowCode = await compile('Escrow')
     vaultCode = await compile('Vault')
     blockchain = await Blockchain.create()
-
     seller = await blockchain.treasury('seller1')
     buyer = await blockchain.treasury('buyer1')
     guard = await blockchain.treasury('guard1')
-
+    // deploy escrow
     escrow = blockchain.openContract(
       Escrow.from(
         {
@@ -63,6 +65,7 @@ describe('Escrow Reward', () => {
         escrowCode,
       ),
     )
+    sellerBalance = await seller.getBalance()
     const escrowResult = await escrow.sendDeploy(seller.getSender())
     expect(escrowResult.transactions).toHaveTransaction({
       from: seller.address,
@@ -71,7 +74,9 @@ describe('Escrow Reward', () => {
       success: true,
     })
     expect((await escrow.getState()).status).toEqual(Status[Status.draft])
-
+    expect(await spend(sellerBalance, seller)).toEqual('0.0123')
+    sellerBalance = await seller.getBalance()
+    // deploy vault
     vault = blockchain.openContract(
       Vault.from(
         {
@@ -88,8 +93,9 @@ describe('Escrow Reward', () => {
       deploy: true,
       success: true,
     })
-    await printBalance('deploy')
-
+    expect(await spend(sellerBalance, seller)).toEqual('0.0071')
+    sellerBalance = await seller.getBalance()
+    // bind escrow and vault
     const bindResult = await escrow.sendBind(seller.getSender(), {
       vault: vault.address,
     })
@@ -99,27 +105,14 @@ describe('Escrow Reward', () => {
       success: true,
     })
     expect((await escrow.getState()).status).toEqual(Status[Status.proposed])
-    const escrowState = await escrow.getState()
-    expect(JSON.stringify(escrowState)).toEqual(
-      JSON.stringify({
-        seqno: 1,
-        status: 'proposed',
-        startedAt: 0,
-        deadline: 0,
-        description: 'ipfs://bafkreihqece535ceflazlh4d2bg26dis5gp4c2fivp5dutf4cieiy3kgda',
-        seller: seller.address,
-        buyer: buyer.address,
-        guard: guard.address,
-        vault: vault.address,
-      }),
-    )
-    const vaultState = await vault.getState()
-    expect(vaultState.deposit).toEqual(DEPOSIT)
-    expect(vaultState.owner.toRawString()).toEqual(escrow.address.toRawString())
-    expect((await escrow.getState()).status).toEqual(Status[Status.proposed])
+    expect(await spend(sellerBalance, seller)).toEqual('0.0065')
+    sellerBalance = await seller.getBalance()
+    // make deposit
+    const actionFee = await vault.getActionFee()
+    buyerBalance = await buyer.getBalance()
     const depositResult = await buyer.send({
       to: vault.address,
-      value: DEPOSIT + ACTION_VALUE,
+      value: DEPOSIT + actionFee,
     })
     expect(depositResult.transactions).toHaveTransaction({
       from: buyer.address,
@@ -127,7 +120,9 @@ describe('Escrow Reward', () => {
       success: true,
     })
     expect((await escrow.getState()).status).toEqual(Status[Status.deposited])
-    await printBalance('deposit')
+    expect(await vault.getBalance()).toEqual(DEPOSIT)
+    expect((await vault.getState()).owner.toRawString()).toEqual(escrow.address.toRawString())
+    expect(await spend(buyerBalance, buyer)).toEqual('10.0083')
     buyerBalance = await buyer.getBalance()
   })
 
@@ -178,6 +173,6 @@ describe('Escrow Reward', () => {
     expect(Math.round(Number(fromNano(await buyer.getBalance())))).toBeGreaterThanOrEqual(
       parseInt(fromNano(buyerBalance + DEPOSIT)),
     )
-    expect(await diffBalance()).toEqual('0.051')
+    expect(await diffBalance()).toEqual('0.059')
   })
 })
