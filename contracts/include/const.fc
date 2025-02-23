@@ -1,3 +1,9 @@
+const int size::seqno    = 32;
+const int size::actor_id = 2;
+const int size::status   = 4;
+const int size::time     = 32;
+const int size::deadline = 22;
+
 const escrow_compute_gas = 65000;
 const vault_compute_gas  = 20000;
 
@@ -54,13 +60,3 @@ const match::claim_approved    = (action::claim << 4 | status::approved);
 const match::reject_disputed   = (action::reject << 4 | status::disputed);
 const match::settle_disputed   = (action::settle << 4 | status::disputed);
 const match::claim_rejected    = (action::claim << 4 | status::rejected);
-
-#include "stdlib.fc";
-
-const min_storage_duration = 60; ;; 60 sec
-int fee(int workchain, int compute_gas, int storage_bits, int storage_cells, int forward_bits, int forward_cells) impure inline {
-    int compute_fee = get_compute_fee(workchain, compute_gas);
-    int storage_fee = my_storage_due() + get_storage_fee(workchain, min_storage_duration, storage_bits, storage_cells);
-    int fwd_fee = get_forward_fee(workchain, forward_bits, forward_cells);
-    return compute_fee + storage_fee + fwd_fee;
-}

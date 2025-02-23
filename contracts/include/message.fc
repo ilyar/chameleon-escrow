@@ -1,5 +1,13 @@
 #include "stdlib.fc";
 
+const min_storage_duration = 60; ;; 60 sec
+int fee(int workchain, int compute_gas, int storage_bits, int storage_cells, int forward_bits, int forward_cells) impure inline {
+    int compute_fee = get_compute_fee(workchain, compute_gas);
+    int storage_fee = my_storage_due() + get_storage_fee(workchain, min_storage_duration, storage_bits, storage_cells);
+    int fwd_fee = get_forward_fee(workchain, forward_bits, forward_cells);
+    return compute_fee + storage_fee + fwd_fee;
+}
+
 ;; https://docs.ton.org/v3/documentation/smart-contracts/message-management/sending-messages#message-layout
 builder int_message_info(int flags, slice dest, int grams) inline {
     return begin_cell()
@@ -11,11 +19,6 @@ builder int_message_info(int flags, slice dest, int grams) inline {
 
 builder int_message(int flags, slice dest, int grams, int action, int query_id) inline {
     return int_message_info(flags, dest, grams).store_op(action).store_query_id(query_id);
-}
-
-() message(slice dest, int grams, int action, int query_id, slice reason, int mode) impure inline {
-    builder message = int_message(NON_BOUNCEABLE, dest, grams, action, query_id);
-    return send_raw_message(message.store_slice(reason).end_cell(), mode);
 }
 
 () change(slice dest, int action, int query_id, slice body) impure inline {

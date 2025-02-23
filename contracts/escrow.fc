@@ -1,7 +1,6 @@
 #include "include/stdlib.fc";
-#include "include/size.fc";
+#include "include/const.fc";
 #include "include/message.fc";
-#include "include/action.fc";
 
 ;; ------------------------------------------------------------------------------------------------
 ;; storage variables
